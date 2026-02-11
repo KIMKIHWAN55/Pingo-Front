@@ -1,4 +1,4 @@
-![Image](https://github.com/user-attachments/assets/bf67fe15-c1a2-4918-83c8-8b3a0f3d5e13)
+
 # Pingo
 
 Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터링을 통해 이상형을 찾을 수 있는 소개팅 앱입니다. </br>
@@ -13,9 +13,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - **Backend**: Java, Spring Boot
 - **Database**: Oracle, MongoDB
 
-## 📌 깃허브 주소
-- [Frontend Repository](https://github.com/2Shiro/pingo_front)
-- [Backend Repository](https://github.com/2Shiro/pingo_back)
+
 
 ## 📌 담당 역할
 - **회원가입**: 이메일 인증을 통한 회원가입 기능 구현
