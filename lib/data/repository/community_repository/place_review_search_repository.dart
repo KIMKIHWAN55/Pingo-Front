@@ -10,7 +10,7 @@ class PlaceReviewSearchRepository {
   final Dio _dio = Dio();
   final CustomDio _customDio = CustomDio.instance;
   final String _baseUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
-  final String _apiKey = "KakaoAK 1e94dca04a49847a5688820f39327f7e";
+  final String _apiKey = "KakaoAK 3dd0daae148d772d441b5482da32edd2";
 
   // placeReview 작성
   Future<bool> fetchInsertPlaceReview(Map<String, dynamic> data) async {

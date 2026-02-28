@@ -3,8 +3,8 @@
 // 대신 10.0.2.2로 접근 가능
 // 근데 usb포트로 기기를 연결해서 사용하면 접근 못하기 때문에
 // 이 경우에는 내 로컬 IP주소를 입력해주어야 함
-const String rootURL = 'http://10.0.2.2:8080/pingo';
-const String wsRootURL = 'ws://10.0.2.2:8080/pingo/ws';
+const String rootURL = 'http://43.200.7.166:8080/pingo';
+const String wsRootURL = 'ws://43.200.7.166:8080/pingo/ws';
 
 // 'http://10.0.2.2:8080/pingo';
 // 'ws://10.0.2.2:8080/pingo/ws';

@@ -43,7 +43,7 @@ dependencies:
   dio: ^5.7.0
   flutter_riverpod: ^2.6.1
   carousel_slider: ^5.0.0
-  uuid: ^4.5.1 #정지현 uuid추가용
+  uuid: ^4.5.1
   image_picker: ^1.0.4
   flutter_card_swiper: ^6.0.0
   geolocator: ^10.1.0 #GPS
