@@ -1,4 +1,4 @@
-![Image](https://github.com/user-attachments/assets/bf67fe15-c1a2-4918-83c8-8b3a0f3d5e13)
+
 # Pingo
 
 Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터링을 통해 이상형을 찾을 수 있는 소개팅 앱입니다. </br>
@@ -13,9 +13,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - **Backend**: Java, Spring Boot
 - **Database**: Oracle, MongoDB
 
-## 📌 깃허브 주소
-- [Frontend Repository](https://github.com/2Shiro/pingo_front)
-- [Backend Repository](https://github.com/2Shiro/pingo_back)
+
 
 ## 📌 담당 역할
 - **회원가입**: 이메일 인증을 통한 회원가입 기능 구현
@@ -24,7 +22,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - **마이페이지**: 내 정보 조회 및 수정 기능 구현
 
 ---
-![Image](https://github.com/user-attachments/assets/eb6eea15-2e93-40ab-ba69-b5455b39d446)
+
 **🏷️ 회원가입**
 - 유저의 기본 정보를 입력받아, 맞춤형 서비스 제공 및 이용을 가능하게 하는 기능
 
@@ -39,7 +37,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - **프로필 이미지 등록**
     - 이미지를 업로드하여 프로필 등록
  ---
- ![ID PW 찾기](https://github.com/user-attachments/assets/9a1bd3bc-2f52-4b79-84c4-0cbc027d8fc0)
+
 **🏷️ 아이디 / 비밀번호 찾기**
 - 이메일 인증을 통해 해당하는 아이디 또는 비밀번호 찾는 기능이 가능하다
 
@@ -50,7 +48,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - **비밀번호 찾기**
     - 비밀번호는 암호화가 되어 데이터베이스에 저장되기에 복호화가 불가능하고, 가능하더라도 고객의 정보를 복호화 하는 것은 불법이기에 비밀번호 재설정으로 해결할 수 있다.
 ---
-![Image](https://github.com/user-attachments/assets/b8cf8913-8280-4ebe-884b-9383e62c599d)
+
 **🏷️ 로그인**
 - 입력받은 아이디와 비밀번호가 일치하는지 확인하여 로그인 여부를 결정할 수 있다.
 
@@ -59,7 +57,7 @@ Pingo는 위치 기반으로 주변 사용자를 추천하고, 키워드 필터�
 - 아이디와 비밀번호가 일치한다면 메인페이지로 이동한다.
 - 메인페이지에서는 로그인한 유저의 반대 성별에 해당하는 유저들을 조회하여 출력한다.
 ---
-![Pingo 포폴](https://github.com/user-attachments/assets/9d6f1945-7d62-41ff-adf5-6d6aaef2b0e2)
+
 **🏷️ 마이페이지**
 - 유저의 정보를 수정할 수 있다.
 
