@@ -7,13 +7,10 @@ import 'package:pingo_front/data/network/custom_dio.dart';
 import 'package:mime/mime.dart';
 
 class PlaceReviewSearchRepository {
-  // _dio는 더 이상 직접 쓰지 않으므로 삭제해도 되지만, 다른 곳에 쓸 수 있으니 둠
   final Dio _dio = Dio();
   final CustomDio _customDio = CustomDio.instance;
-
-  // 🗑️ 삭제: 프론트에서 직접 카카오를 호출하면 안 되므로 아래 두 줄은 지웁니다.
-  // final String _baseUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
-  // final String _apiKey = "KakaoAK ...";
+  final String _baseUrl = "https://dapi.kakao.com/v2/local/search/keyword.json";
+  final String _apiKey = "KakaoAK 3dd0daae148d772d441b5482da32edd2";
 
   // placeReview 작성
   Future<bool> fetchInsertPlaceReview(Map<String, dynamic> data) async {
@@ -55,8 +52,8 @@ class PlaceReviewSearchRepository {
   // 서버에서 장소 리뷰 조회
   Future<List<PlaceReview>> fetchSearchPlaceReview(
       {required String? cateSort,
-        required String? searchSort,
-        String? keyword}) async {
+      required String? searchSort,
+      String? keyword}) async {
     List<dynamic> response = await _customDio.get('/community/place', query: {
       'cateSort': cateSort,
       'searchSort': searchSort,
@@ -69,8 +66,8 @@ class PlaceReviewSearchRepository {
   // 서버에서 장소 리뷰 조회 with location
   Future<List<PlaceReview>> fetchSearchPlaceReviewWithLocation(
       {required String? cateSort,
-        required double latitude,
-        required double longitude}) async {
+      required double latitude,
+      required double longitude}) async {
     List<dynamic> response = await _customDio.get('/community/place/location',
         query: {
           'cateSort': cateSort,
@@ -81,34 +78,29 @@ class PlaceReviewSearchRepository {
     return response.map((json) => PlaceReview.fromJson(json)).toList();
   }
 
-  // ⭐️ [수정됨] 카카오 API 검색 (백엔드 중계)
+  // 카카오 API 검색
   Future<Map<String, dynamic>> fetchSearchKaKaoLocation(String keyword,
       {int page = 1, int size = 10}) async {
     try {
-      // 1. CustomDio를 사용하여 내 백엔드 서버로 요청합니다.
-      // 2. Authorization 헤더는 백엔드에서 처리하므로 여기서는 뺍니다.
-      // 3. 파라미터 키를 'query'가 아니라 백엔드 Controller가 받는 'keyword'로 보냅니다.
-      dynamic response = await _customDio.get(
-        '/pingo/map/search',
-        query: {
-          "keyword": keyword, // ⚠️ 주의: 백엔드(@RequestParam String keyword)와 이름 일치 필수
-          "page": page,
-          "size": size
-        },
+      Response response = await _dio.get(
+        _baseUrl,
+        queryParameters: {"query": keyword, "page": page, "size": size},
+        options: Options(
+          headers: {
+            "Authorization": _apiKey, // 카카오 API 인증 헤더 추가
+          },
+        ),
       );
 
-      logger.i("백엔드 장소 검색 응답: $response");
+      logger.i(response);
 
-      // CustomDio가 이미 JSON을 파싱해서 dynamic(Map) 형태로 줄 것으로 예상됩니다.
-      // 만약 String으로 온다면 jsonDecode(response)가 필요할 수 있습니다.
-      if (response is String) {
-        return jsonDecode(response);
+      if (response.statusCode == 200) {
+        return response.data; // JSON 데이터를 그대로 반환
       } else {
-        return response as Map<String, dynamic>;
+        throw Exception("카카오 API 요청 실패: ${response.statusCode}");
       }
-
     } catch (e) {
-      throw Exception("장소 검색 실패: ${e.toString()}");
+      throw Exception("카카오 API 요청 실패: ${e.toString()}");
     }
   }
 

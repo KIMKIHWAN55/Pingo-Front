@@ -31,57 +31,76 @@ class _PlaceBoxState extends ConsumerState<PlaceBox> {
       setState(() {
         isExpanded = true;
       });
-      Future.delayed(Duration(milliseconds: 300), () {
-        setState(() {
-          showText = true;
-        });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) { // mounted 체크 추가 (비동기 에러 방지)
+          setState(() {
+            showText = true;
+          });
+        }
       });
     }
   }
 
   void _clickPlaceReviewHeart() async {
     String? userNo = ref.read(sessionProvider).userNo;
+    String? prNo = widget.placeReview.prNo;
+
+    if (userNo == null || prNo == null) return;
+
+    // 1. 서버에 좋아요 요청
     String result = await ref
         .read(placeReviewSearchViewModelProvider.notifier)
-        .clickThumbUp(userNo!, widget.placeReview.prNo!);
+        .clickThumbUp(userNo, prNo);
+
+    // 2. 결과에 따라 로컬 상태 업데이트 (ViewModel 함수 호출)
     if (result == 'increase') {
-      ref
-          .read(placeReviewSearchViewModelProvider)
-          .reviewSearchResult
-          .changeHeart(widget.placeReview.prNo!, 1);
+      // [수정된 부분] 모델 직접 수정(x) -> 뷰모델에 요청(o)
+      ref.read(placeReviewSearchViewModelProvider.notifier).updateHeartCount(prNo, 1);
     } else {
-      ref
-          .read(placeReviewSearchViewModelProvider)
-          .reviewSearchResult
-          .changeHeart(widget.placeReview.prNo!, -1);
+      // [수정된 부분]
+      ref.read(placeReviewSearchViewModelProvider.notifier).updateHeartCount(prNo, -1);
     }
-    setState(() {});
+
+    // setState는 Riverpod이 상태를 바꾸면 알아서 화면이 갱신되므로 사실상 불필요하지만,
+    // 애니메이션 등을 위해 남겨둬도 무방합니다.
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     double totalWidth = MediaQuery.of(context).size.width;
 
+    // [안전 장치] 이미지가 없을 경우 대비
+    final imageProvider = (widget.placeReview.thumb != null && widget.placeReview.thumb!.isNotEmpty)
+        ? CustomImage().provider(widget.placeReview.thumb!)
+        : const AssetImage('assets/images/placeholder.png'); // 기본 이미지(없으면 에러날 수 있음) 혹은 Colors.grey 처리
+
     return GestureDetector(
       onTap: _toggleExpanded,
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 400), // 크기 변경 애니메이션 지속 시간
+        duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
-        margin: EdgeInsets.only(bottom: 8.0),
+        margin: const EdgeInsets.only(bottom: 8.0),
         width: totalWidth * 0.9,
         height: isExpanded
             ? totalWidth * 0.9 / 16 * 11
-            : totalWidth * 0.9 / 16 * 7, // 확장/축소 높이
+            : totalWidth * 0.9 / 16 * 7,
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: CustomImage().provider(widget.placeReview.thumb!),
+          // 이미지가 있으면 이미지 표시, 없으면 회색 배경
+          image: widget.placeReview.thumb != null
+              ? DecorationImage(
+            image: imageProvider as ImageProvider,
             fit: BoxFit.cover,
-          ),
-          color: Colors.white,
+            onError: (exception, stackTrace) {
+              // 이미지 로드 실패 시 처리
+            },
+          )
+              : null,
+          color: widget.placeReview.thumb == null ? Colors.grey[300] : Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.4),
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
               blurRadius: 4,
               spreadRadius: 0,
             ),
@@ -98,20 +117,18 @@ class _PlaceBoxState extends ConsumerState<PlaceBox> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 GestureDetector(
-                  onTap: () {
-                    _clickPlaceReviewHeart();
-                  },
+                  onTap: _clickPlaceReviewHeart,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.heart_fill,
+                        const Icon(CupertinoIcons.heart_fill,
                             size: 20, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
                           '${widget.placeReview.heart}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 12),
@@ -124,28 +141,28 @@ class _PlaceBoxState extends ConsumerState<PlaceBox> {
                   onTap: () {
                     widget.changePlaceShared(true, widget.placeReview);
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
                     child: Icon(Icons.ios_share_outlined,
                         size: 20, color: Colors.white),
                   ),
                 )
               ],
             ),
-            // 하단 정보 (애니메이션 적용)
+            // 하단 정보
             Container(
-              padding: EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 24),
+              padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 24),
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(12)),
+                const BorderRadius.vertical(bottom: Radius.circular(12)),
                 gradient: LinearGradient(
-                  begin: Alignment.bottomCenter, // 아래쪽이 진하게
-                  end: Alignment.topCenter, // 위쪽이 투명하게
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(0.8), // 아래쪽 (진한 검은색)
-                    Colors.black.withOpacity(0.6), // 중간 (반투명)
-                    Colors.black.withOpacity(0.0), // 위쪽 (완전 투명)
+                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.6),
+                    Colors.black.withOpacity(0.0),
                   ],
                 ),
               ),
@@ -153,44 +170,43 @@ class _PlaceBoxState extends ConsumerState<PlaceBox> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.placeReview.placeName!,
+                    widget.placeReview.placeName ?? '장소명 없음', // Null 처리
                     style: Theme.of(context)
                         .textTheme
                         .headlineLarge
                         ?.copyWith(color: Colors.white),
                   ),
                   Text(
-                    widget.placeReview.addressName!,
+                    widget.placeReview.addressName ?? '주소 없음', // Null 처리
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge
                         ?.copyWith(color: Colors.white),
                   ),
-                  // ✅ 크기 변경 후 텍스트가 나타나도록 수정
                   AnimatedOpacity(
-                    duration: Duration(milliseconds: 400),
-                    curve: Curves.easeInOut, // 부드러운 이동
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
                     opacity: showText ? 1.0 : 0.0,
                     child: AnimatedContainer(
-                      duration: Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic, // 자연스럽게 멈추는 애니메이션
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
                       transform: Matrix4.translationValues(
-                          0, showText ? 0 : 10, 0), // Y축 이동
+                          0, showText ? 0 : 10, 0),
                       child: Visibility(
                         visible: showText,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
-                              "🏷 ${widget.placeReview.userNick}",
+                              "🏷 ${widget.placeReview.userNick ?? '익명'}",
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyLarge
                                   ?.copyWith(color: Colors.white),
                             ),
                             Text(
-                              "💬 ${widget.placeReview.contents}",
+                              "💬 ${widget.placeReview.contents ?? ''}",
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyLarge

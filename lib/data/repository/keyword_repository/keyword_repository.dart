@@ -28,7 +28,7 @@ class KeywordRepository {
       query: {'userNo': userNo, 'sKwId': kwId},
     );
 
-    List<dynamic> usersData = response;
+    List<dynamic> usersData = response ?? [];
 
     List<Profile> users = usersData
         .map((user) => Profile(

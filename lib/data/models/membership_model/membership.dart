@@ -14,8 +14,8 @@ class Membership {
 
   Membership.fromJson(Map<String, dynamic> json)
       : msNo = json['msNo'],
-        title = json['title'],
-        period = json['period'],
-        contents = json['contents'],
-        price = json['price'];
+        title = json['msName'],       // msName을 title에 담기
+        period = json['msDuration'],  // msDuration을 period에 담기
+        contents = json['description'], // description을 contents에 담기
+        price = json['msPrice'];      // msPrice를 price에 담기
 }

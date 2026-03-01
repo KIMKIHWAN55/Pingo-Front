@@ -10,9 +10,10 @@ import 'package:pingo_front/data/view_models/community_view_model/place_review_s
 import 'package:path_provider/path_provider.dart';
 
 class PlaceWritePage extends StatefulWidget {
-  String userNo;
-  PlaceReviewSearchViewModel kakaoSearchProvider;
-  PlaceWritePage(this.kakaoSearchProvider, this.userNo, {super.key});
+  final String userNo;
+  final PlaceReviewSearchViewModel kakaoSearchProvider;
+
+  const PlaceWritePage(this.kakaoSearchProvider, this.userNo, {super.key});
 
   @override
   State<PlaceWritePage> createState() => _PlaceWritePageState();
@@ -20,63 +21,63 @@ class PlaceWritePage extends StatefulWidget {
 
 class _PlaceWritePageState extends State<PlaceWritePage> {
   late KakaoSearch kakaoSearch;
-  final TextEditingController _textController = TextEditingController();
+
+  // 수정 가능하도록 각각의 Controller 추가
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+
   File? _placeImage;
-  bool _isLoading = true; // 서버 이미지 로딩 여부
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    // 1. Provider에서 마지막으로 검색된 장소 정보를 가져옵니다.
     kakaoSearch = widget.kakaoSearchProvider.lastSearch;
 
-    if (kakaoSearch.placeUrl != null) {
+    // 2. 검색된 결과가 있다면 초기값으로 설정합니다. (유저가 수정 가능)
+    _nameController.text = kakaoSearch.placeName ?? "";
+    _addressController.text = kakaoSearch.addressName ?? "";
+
+    if (kakaoSearch.placeUrl != null && kakaoSearch.placeUrl!.isNotEmpty) {
       _fetchServerImage(kakaoSearch.placeUrl!);
     } else {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 📝 서버에서 Base64 이미지 받아와 File로 변환하는 함수
+  // 기존 이미지 크롤링 로직 유지
   Future<void> _fetchServerImage(String url) async {
     try {
-      String? base64Image =
-          await widget.kakaoSearchProvider.crawlingPlaceImage(url);
-      if (base64Image != null) {
-        Uint8List bytes = base64Decode(base64Image);
+      var result = await widget.kakaoSearchProvider.crawlingPlaceImage(url);
+      if (result != null && result is String && result.isNotEmpty) {
+        Uint8List bytes = base64Decode(result);
         File file = await _saveImageToFile(bytes);
-
+        if (!mounted) return;
         setState(() {
-          _placeImage = file; // 서버에서 받은 이미지를 File로 저장
+          _placeImage = file;
           _isLoading = false;
         });
       } else {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('서버 이미지 가져오기 실패: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      logger.e('서버 이미지 가져오기 실패: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 📝 Uint8List 데이터를 파일로 변환하는 함수
   Future<File> _saveImageToFile(Uint8List bytes) async {
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/place_image.png');
+    final file = File('${tempDir.path}/place_image_${DateTime.now().millisecondsSinceEpoch}.png');
     await file.writeAsBytes(bytes);
     return file;
   }
 
-  // picker 라이브러리를 이용한 이미지 파일 처리 함수
   Future<void> _pickProfileImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (pickedFile != null) {
       setState(() {
         _placeImage = File(pickedFile.path);
@@ -84,27 +85,40 @@ class _PlaceWritePageState extends State<PlaceWritePage> {
     }
   }
 
-  // 유효성 검증 후 게시글 작성
   void checkValidation() async {
-    if (_placeImage == null || _textController.text.trim() == '') {
-      logger.e('이미지와 한줄평을 등록하세요');
+    // Controller에서 현재 입력된 값을 가져옵니다.
+    String placeName = _nameController.text.trim();
+    String addressName = _addressController.text.trim();
+    String contents = _contentController.text.trim();
+
+    if (placeName.isEmpty) {
+      _showSnackBar('장소 이름을 입력해주세요.');
+      return;
+    }
+    if (addressName.isEmpty) {
+      _showSnackBar('주소를 입력해주세요.');
+      return;
+    }
+    if (_placeImage == null) {
+      _showSnackBar('장소 이미지를 등록해주세요.');
+      return;
+    }
+    if (contents.isEmpty) {
+      _showSnackBar('한 줄평을 작성해주세요.');
       return;
     }
 
     PlaceReview placeReview = PlaceReview(
-      null,
-      kakaoSearch.placeName,
-      null,
-      kakaoSearch.addressName,
-      kakaoSearch.roadAddressName,
-      widget.userNo,
-      _textController.text.trim(),
-      kakaoSearch.category,
-      kakaoSearch.latitude,
-      kakaoSearch.longitude,
-      0,
-      null,
-      null,
+      prNo: null,
+      placeName: placeName, // 유저가 수정한 이름 사용
+      addressName: addressName, // 유저가 수정한 주소 사용
+      roadAddressName: kakaoSearch.roadAddressName ?? "",
+      userNo: widget.userNo,
+      contents: contents,
+      category: kakaoSearch.category ?? "음식점",
+      latitude: kakaoSearch.latitude ?? 0.0,
+      longitude: kakaoSearch.longitude ?? 0.0,
+      heart: 0,
     );
 
     Map<String, dynamic> data = {
@@ -112,14 +126,24 @@ class _PlaceWritePageState extends State<PlaceWritePage> {
       'placeImage': _placeImage,
     };
 
-    bool result = await widget.kakaoSearchProvider.insertPlaceReview(data);
-
-    if (result) {
-      FocusScope.of(context).unfocus();
-      Navigator.pop(
-        context,
-      );
+    try {
+      bool result = await widget.kakaoSearchProvider.insertPlaceReview(data);
+      if (result && mounted) {
+        FocusScope.of(context).unfocus();
+        Navigator.pop(context);
+      } else {
+        _showSnackBar('서버 저장에 실패했습니다.');
+      }
+    } catch (e) {
+      logger.e('등록 중 예외 발생: $e');
+      _showSnackBar('네트워크 오류가 발생했습니다.');
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
   }
 
   @override
@@ -127,85 +151,75 @@ class _PlaceWritePageState extends State<PlaceWritePage> {
     double cntWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("추천 장소 등록"),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            FocusScope.of(context).unfocus(); // 키보드 닫기
-            Navigator.of(context).pop(); // 뒤로 가기
-          },
-        ),
-      ),
+      appBar: AppBar(title: const Text("추천 장소 등록")),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Center(
-            child: Column(
-              children: [
-                Text(
-                  '다른 사용자를 위해 장소를 추천해보세요!',
-                  style: Theme.of(context).textTheme.headlineMedium,
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('장소 정보를 확인하고 추천글을 남겨주세요!',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              _buildProfileBox(cntWidth),
+              const SizedBox(height: 12),
+              const Center(child: Text('이미지를 클릭하여 변경할 수 있습니다.', style: TextStyle(color: Colors.grey))),
+              const SizedBox(height: 32),
+
+              // 1. 장소명 입력 필드
+              const Text("장소 이름", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  hintText: "장소명을 입력하세요",
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                const SizedBox(height: 32),
-                _buildProfileBox(cntWidth),
-                const SizedBox(height: 8),
-                Text('클릭하여 이미지를 변경할 수 있습니다.'),
-                const SizedBox(height: 32),
-                Text(
-                  kakaoSearch.placeName ?? '이름 없음',
-                  style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: 20),
+
+              // 2. 주소 입력 필드
+              const Text("주소", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  hintText: "주소를 입력하세요",
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  kakaoSearch.addressName ?? '주소 없음',
-                  style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 20),
+
+              // 3. 한 줄평 입력 필드
+              const Text("한 줄평", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _contentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: '이 장소를 추천하는 이유를 적어주세요.',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextField(
-                    controller: _textController,
-                    decoration: InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey)),
-                      border: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey)),
-                      filled: true,
-                      fillColor: Colors.white,
-                      hintText: '한 줄평 작성',
-                      hintStyle: TextStyle(color: Colors.grey),
-                    ),
+              ),
+              const SizedBox(height: 40),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF906FB7),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
+                  onPressed: checkValidation,
+                  child: const Text('등록하기',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _placeImage == null ||
-                              _textController.text.trim() == ''
-                          ? Colors.grey
-                          : Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                    ),
-                    onPressed: () => checkValidation(),
-                    child: Text(
-                      '작성',
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: MediaQuery.of(context).viewInsets.bottom / 10),
-              ],
-            ),
+              ),
+              const SizedBox(height: 40),
+            ],
           ),
         ),
       ),
@@ -217,30 +231,20 @@ class _PlaceWritePageState extends State<PlaceWritePage> {
       onTap: _pickProfileImage,
       child: Container(
         width: double.infinity,
-        height: cntWidth * 2 / 3,
+        height: cntWidth * 0.5,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.black26, width: 2),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.grey[100],
+          border: Border.all(color: Colors.black12, width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(), // 로딩 표시
-              )
+            ? const Center(child: CircularProgressIndicator())
             : (_placeImage == null
-                ? Center(
-                    child: Icon(
-                      Icons.add_a_photo,
-                      size: 50,
-                      color: Colors.black38,
-                    ),
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.file(
-                      _placeImage!,
-                      fit: BoxFit.cover,
-                    ),
-                  )),
+            ? const Center(child: Icon(Icons.add_a_photo, size: 40, color: Colors.black26))
+            : ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Image.file(_placeImage!, fit: BoxFit.cover),
+        )),
       ),
     );
   }

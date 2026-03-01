@@ -3,17 +3,30 @@ import 'package:pingo_front/data/models/community_model/review_search_result.dar
 import 'package:flutter/material.dart';
 
 class PlaceReviewSearch {
-  KakaoSearchResult kakaoSearchResult;
-  ReviewSearchResult reviewSearchResult;
+  // [수정] final 키워드 추가 (권장사항)
+  final KakaoSearchResult kakaoSearchResult;
+  final ReviewSearchResult reviewSearchResult;
 
   PlaceReviewSearch(this.kakaoSearchResult, this.reviewSearchResult);
 
+  PlaceReviewSearch copyWith({
+    KakaoSearchResult? kakaoSearchResult,
+    ReviewSearchResult? reviewSearchResult,
+  }) {
+    return PlaceReviewSearch(
+      kakaoSearchResult ?? this.kakaoSearchResult,
+      reviewSearchResult ?? this.reviewSearchResult,
+    );
+  }
+
+  // [수정] toString이 클래스 내부에 있어야 합니다.
   @override
   String toString() {
     return 'PlaceReviewSearch{kakaoSearchResult: $kakaoSearchResult, reviewSearchResult: $reviewSearchResult}';
   }
-}
+} // [수정] 클래스는 여기서 끝나야 합니다.
 
+// [참고] 이 맵은 클래스 외부에 있어도 상관없습니다.
 Map<String, dynamic> kakaoCategory = {
   "음식점": Icons.restaurant,
   "카페": Icons.local_cafe,
@@ -24,15 +37,4 @@ Map<String, dynamic> kakaoCategory = {
   "편의점": Icons.local_convenience_store,
   "공공기관": Icons.apartment,
   "주차장": Icons.local_parking,
-  // "주유소, 충전소": Icons.local_gas_station,
-
-  // "어린이집, 유치원": Icons.child_care,
-  // "학교": Icons.school,
-  // "학원": Icons.menu_book,
-  // "지하철역": Icons.directions_subway,
-  // "은행": Icons.account_balance,
-  // "중개업소": Icons.real_estate_agent,
-  // "병원": Icons.local_hospital,
-  // "약국": Icons.local_pharmacy,
-  // "기타": Icons.pin_drop_outlined,
 };

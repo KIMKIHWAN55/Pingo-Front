@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:pingo_front/data/models/membership_model/membership.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -15,30 +13,27 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   late final WebViewController _controller;
-  final String successUrl = "https://your-success-url.com";
-  final String failUrl = "https://your-fail-url.com";
-  String paymentUrl = '';
+  // 실제 시연을 위해 유효한 리다이렉트 URL 사용 (테스트용)
+  final String successUrl = "https://example.com/success";
+  final String failUrl = "https://example.com/fail";
 
   @override
   void initState() {
     super.initState();
+
+    // 1. 컨트롤러 기본 설정
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (NavigationRequest request) {
-            // toss 정상 연결
-            if (request.url.startsWith("intent://")) {
-              _launchExternalUrl(request.url);
-              return NavigationDecision.prevent;
-            }
-            // 결제 성공
-            if (request.url.contains(successUrl)) {
+            // 결제 성공 감지
+            if (request.url.startsWith(successUrl)) {
               Navigator.pop(context, {"status": "success"});
               return NavigationDecision.prevent;
             }
-            // 결제 실패
-            if (request.url.contains(failUrl)) {
+            // 결제 실패 감지
+            if (request.url.startsWith(failUrl)) {
               Navigator.pop(context, {"status": "fail"});
               return NavigationDecision.prevent;
             }
@@ -46,72 +41,55 @@ class _PaymentPageState extends State<PaymentPage> {
           },
         ),
       );
-    createFakePayment(); // 가짜 결제창 생성
+
+    // 2. 토스 결제창을 실행할 HTML 로드
+    _loadPaymentHtml();
   }
 
-  /// `intent://` URL을 `https://`로 변경해 외부 브라우저에서 열기
-  Future<void> _launchExternalUrl(String url) async {
-    final fallbackUrl = url.replaceAll("intent://", "https://");
-    if (await canLaunchUrl(Uri.parse(fallbackUrl))) {
-      // await launchUrl(Uri.parse(fallbackUrl),
-      //     mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint("URL을 열 수 없음: $url");
-    }
-  }
+  void _loadPaymentHtml() {
+    // 토스 테스트용 클라이언트 키 (주의: test_ck로 시작하는 키 사용)
+    const String clientKey = "test_ck_DpexMgkW36va5xDNgvGN3GbR5ozO";
 
-  /// 토스 페이먼츠 테스트 결제 요청 (결제 없이 가짜 URL 반환)
-  Future<void> createFakePayment() async {
-    const String testClientKey =
-        "test_sk_DpexMgkW36va5xDNgvGN3GbR5ozO"; // 토스 테스트용 클라이언트 키
-    const String apiUrl = "https://api.tosspayments.com/v1/payments";
+    final String orderId = "ORDER_${DateTime.now().millisecondsSinceEpoch}";
+    final String orderName = widget.selectedMembership?.title ?? "Pingo 구독권";
+    final int amount = widget.selectedMembership?.price ?? 0;
 
-    String basicAuth = 'Basic ${base64Encode(utf8.encode('$testClientKey:'))}';
+    // 결제창을 띄우는 최소한의 JS 코드
+    final String paymentHtml = '''
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <script src="https://js.tosspayments.com/v1/payment"></script>
+        </head>
+        <body>
+          <script>
+            var tossPayments = TossPayments('$clientKey');
+            tossPayments.requestPayment('카드', {
+              amount: $amount,
+              orderId: '$orderId',
+              orderName: '$orderName',
+              successUrl: '$successUrl',
+              failUrl: '$failUrl',
+            }).catch(function (error) {
+              location.href = '$failUrl?message=' + error.message;
+            });
+          </script>
+        </body>
+      </html>
+    ''';
 
-    Map<String, dynamic> requestData = {
-      "orderId": "ORDER_FAKE_12345",
-      "orderName": widget.selectedMembership?.title,
-      "amount": widget.selectedMembership?.price,
-      "currency": "KRW",
-      "successUrl": successUrl,
-      "failUrl": failUrl,
-      "customerEmail": "test@example.com",
-      "customerName": "홍길동",
-      "method": "카드",
-    };
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": basicAuth,
-        },
-        body: jsonEncode(requestData),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        setState(() {
-          paymentUrl = responseData["checkout"]["url"];
-        });
-      } else {
-        debugPrint("결제 요청 실패: ${response.body}");
-      }
-    } catch (e) {
-      debugPrint("에러 발생: $e");
-    }
+    _controller.loadHtmlString(paymentHtml);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("토스 결제")),
-      body: paymentUrl.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : WebViewWidget(
-              controller: _controller..loadRequest(Uri.parse(paymentUrl)),
-            ),
+      appBar: AppBar(
+        title: const Text("Pingo 안전 결제"),
+        backgroundColor: const Color(0xFF906FB7),
+      ),
+      body: WebViewWidget(controller: _controller),
     );
   }
 }
